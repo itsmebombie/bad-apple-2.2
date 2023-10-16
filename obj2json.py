@@ -8,7 +8,7 @@ obj_directory = 'obj_bad'
 obj_files = [f for f in os.listdir(obj_directory) if f.endswith('.obj')]
 mv = 0
 mf = 0
-output = {}
+output = []
 for obj_file in obj_files:
     vertices = []
     faces = []
@@ -28,11 +28,22 @@ for obj_file in obj_files:
 
     mv = max(mv, len(vertices))
     mf = max(mf, len(faces))
-    output_filename = os.path.splitext(obj_file)[0] + '.json'
-    # print("adding", os.path.splitext(obj_file)[0])
-#     output[os.path.splitext(obj_file)[0]] = {"vertices": vertices, "faces": faces}
+
+    filename = os.path.splitext(obj_file)[0]
+    int_filename = int(filename)
+    output_filename = filename + '.json'
+
+    if int_filename % 6 == 0:
+        print("adding", filename)
+
+    if int_filename >= len(output):
+        output += [0] * (int_filename - len(output) + 1)
+    
+    output[int(filename)] = {"vertices": vertices, "faces": faces}
+
 print(mf, mv)
-# print("dumping json")
-# with open("out.json", 'w') as f:
-#     f.write(str(output).replace(" ", "").replace("'", '"'))
+
+print("dumping json")
+with open("out.json", 'w') as f:
+    f.write(str(output).replace(" ", "").replace("'", '"'))
 
