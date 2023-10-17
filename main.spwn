@@ -1,6 +1,6 @@
 frametime = 1/30 // 30 fps
 x_offset = 0 // when the video starts (at what x)
-y_offset = 900
+y_offset = 2000
 canvas_offset = { x: 0, y: 0 }
 canvas_scale = 10
 frames_amt = 6513
@@ -23,12 +23,14 @@ let curr_y = y_offset
 let next_id = 1
 
 let vertices = {}
-let faces = []
+let faces = {}
 
 
 
 disable_gradient = (id) {
-    if id >= faces.length { return }
+    str_id = @string(id)
+    if faces.get(str_id, default=null) == null { return }
+    if faces[str_id][3] == false { return }
 
     $.add(obj{
         OBJ_ID: 2903, // gradient trigger
@@ -40,17 +42,16 @@ disable_gradient = (id) {
     })
 
     curr_y -= 5
-    faces[id][3] = false
+    faces[str_id][3] = false
 }
 
 enable_gradient = (a, b, c, id) {
-    if faces.length > id { return }
-    if id == faces.length { faces.push([a, b, c, false]) } // create gradient (v1, v2, v3, enabled)
-    else if faces[id][0] == a && faces[id][1] == b && faces[id][2] == c { return }
-
-    disable_gradient(id)
-
-    face = faces[id]
+    // create gradient (v1, v2, v3, enabled)
+    str_id = @string(id)
+    if faces.get(str_id, default=null) == null { let faces[str_id] = [a, b, c, false] }
+    else if faces[str_id][0] == a && faces[str_id][1] == b && faces[str_id][2] == c { return }
+    
+    face = faces[str_id]
 
     $.add(obj{
         OBJ_ID: 2903, // gradient trigger
@@ -66,7 +67,7 @@ enable_gradient = (a, b, c, id) {
     })
 
     curr_y -= 5
-    faces[id][3] = true
+    faces[str_id][3] = true
 }
 
 move_vertex = (v_idx, x, y) {
@@ -128,8 +129,8 @@ for j in 0..frames_amt {
     if j >= data.length { break }
 
     frame = data[j]
-    curr_x += frametime * player_speed * 30
-    curr_y = 900
+    curr_x += frametime * player_speed * 300
+    curr_y = y_offset
 
     if frame.type == @number { continue } // its empty
 
