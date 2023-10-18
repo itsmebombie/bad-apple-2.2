@@ -10,7 +10,7 @@ move_multiplier = 300 / 0.089588 // unit conversion from blender units to gd
 player_speed = 8.36820065875 // 0.5x
 
 // max values: x = 0.119476, y = 0.089588
-data = $.readfile("out.json", "json")[:55]
+data = $.readfile("out.json", "json")
 
 
 extract obj_props
@@ -22,15 +22,14 @@ let curr_x = x_offset
 let curr_y = y_offset
 let next_id = 1
 
-let vertices = {}
-let faces = {}
+let vertices = [0]*max_vertices
+let faces = [0]*max_faces
 
 
 
 disable_gradient = (id) {
-    str_id = @string(id)
-    if faces.get(str_id, default=null) == null { return }
-    if faces[str_id][3] == false { return }
+    if faces[id] == 0 { return }
+    if faces[id][3] == false { return }
 
     $.add(obj{
         OBJ_ID: 2903, // gradient trigger
@@ -42,58 +41,59 @@ disable_gradient = (id) {
     })
 
     curr_y -= 5
-    faces[str_id][3] = false
+    faces[id][3] = false
 }
 
 enable_gradient = (a, b, c, id) {
     // create gradient (v1, v2, v3, enabled)
-    str_id = @string(id)
-    if faces.get(str_id, default=null) == null { let faces[str_id] = [a, b, c, false] }
-    else if faces[str_id][0] == a && faces[str_id][1] == b && faces[str_id][2] == c { return }
+    if faces[id] == 0 { faces[id] = [a, b, c, false] }
+    else if faces[id][0] == a && faces[id][1] == b && faces[id][2] == c { return }
     
-    face = faces[str_id]
+    face = faces[id]
 
     $.add(obj{
         OBJ_ID: 2903, // gradient trigger
         SCALING: 0.25,
         X: curr_x, Y: curr_y,
         GR_VERTEX_MODE: true,
-        GR_BL: vertices[@string(a)].group,
-        GR_BR: vertices[@string(b)].group,
-        GR_TL: vertices[@string(c)].group,
-        GR_TR: vertices[@string(c)].group,
+        GR_BL: vertices[a][2],
+        GR_BR: vertices[b][2],
+        GR_TL: vertices[c][2],
+        GR_TR: vertices[a][2],
         GR_LAYER: 4,
         GR_ID: id,
     })
 
     curr_y -= 5
-    faces[str_id][3] = true
+    faces[id][3] = true
 }
 
+let aa = 0
 move_vertex = (v_idx, x, y) {
-    if vertices.get(v_idx, default = null) == null {
-        let vertices[v_idx] = { x: x, y: y, group: ?g }
+    let vertex = vertices[v_idx]
+
+    if vertex == 0 {
+        vertices[v_idx] = [x, y, ?g]
+        vertex = vertices[v_idx]
 
         $.add(obj{
             OBJ_ID: 211, // white block
-            SCALING: 0.01,
+            SCALING: 0.025,
             X: x * move_multiplier,
             Y: -y * move_multiplier,
-            GROUPS: vertices[v_idx].group,
+            GROUPS: vertex[2],
         })
     }
 
-    vertex = vertices[v_idx]
-
-    to_move_x = $.round((x - vertex.x) * move_multiplier * 100) / 100
-    to_move_y = $.round(-(y - vertex.y) * move_multiplier * 100) / 100
+    to_move_x = $.round((x - vertex[0]) * move_multiplier * 100) / 100
+    to_move_y = $.round(-(y - vertex[1]) * move_multiplier * 100) / 100
 
     if to_move_x == 0 && to_move_y == 0 { return }
 
     $.add(obj{
         OBJ_ID: 901, // move trigger
-        X: curr_x, Y: curr_y,
-        TARGET: vertex.group,
+        X: curr_x-3, Y: curr_y,
+        TARGET: vertex[2],
         MOVE_X: to_move_x,
         MOVE_Y: to_move_y,
         SCALING: 0.25,
@@ -102,21 +102,24 @@ move_vertex = (v_idx, x, y) {
 
     curr_y -= 5
 
-    vertices[v_idx].x = x
-    vertices[v_idx].y = y
+    vertices[v_idx][0] = x
+    vertices[v_idx][1] = y
 }
 
-draw_triangle = (triangle, frame) {
-    if triangle >= frame.faces.length { return } // not sure why this would be the case
+let frame = []
+let frame_vertices = []
+let frame_faces = []
+draw_triangle = (triangle) {
+    if triangle >= frame_faces.length { return } // not sure why this would be the case
 
-    [a, b, c] = frame.faces[triangle]
-    [ax, ay] = frame.vertices[a-1]
-    [bx, by] = frame.vertices[b-1]
-    [cx, cy] = frame.vertices[c-1]
+    [a, b, c] = frame_faces[triangle]
+    [ax, ay] = frame_vertices[a-1]
+    [bx, by] = frame_vertices[b-1]
+    [cx, cy] = frame_vertices[c-1]
 
-    move_vertex(@string(a), ax, ay)
-    move_vertex(@string(b), bx, by)
-    move_vertex(@string(c), cx, cy)
+    move_vertex(a, ax, ay)
+    move_vertex(b, bx, by)
+    move_vertex(c, cx, cy)
     enable_gradient(a, b, c, triangle)
 }
 
@@ -124,20 +127,50 @@ hide_triangle = (triangle) {
     disable_gradient(triangle)
 }
 
+
+format_time = (time_sec: @number) {
+    seconds = @string($.round(time_sec % 60))
+    minutes = @string($.round(time_sec / 60) % 60)
+    hours = @string($.round(time_sec / 3600) % 24)
+
+    return ["0"*@number(hours.length==1) + hours, "0"*@number(minutes.length==1) + minutes, "0"*@number(seconds.length==1) + seconds]
+}
+
+
+let start_time = $.time()
 let last_face_amt = 0
+
+$.print("\n"*3)
+
 for j in 0..frames_amt {
-    if j >= data.length { break }
+    data_len = data.length
+    if j >= data_len { break }
+    time = $.time()
 
     frame = data[j]
-    curr_x += frametime * player_speed * 300
-    curr_y = y_offset
 
     if frame.type == @number { continue } // its empty
 
-    for i in 0..last_face_amt-1 { draw_triangle(i, frame) }
-    for i in last_face_amt..frame.faces.length { hide_triangle(i) }
-    
-    last_face_amt = frame.faces.length
+    frame_faces = frame[1]
+    frame_vertices = frame[0]
 
-    $.print("frame ", j)
+    curr_x += frametime * player_speed * 30
+    curr_y = y_offset
+
+
+    for i in 0..last_face_amt-1 { draw_triangle(i) }
+    for i in last_face_amt..frame_faces.length { hide_triangle(i) }
+    
+    last_face_amt = frame_faces.length
+
+
+    max_frames = $.min(frames_amt, data_len) - 1
+    delta_time = $.round(($.time() - time) * 1000) / 1000
+    elapsed_time = $.round(($.time() - start_time) * 1000) / 1000
+    eta = delta_time * (max_frames - j) - elapsed_time
+
+    $.print("\u{1b}[4A\u{1b}[Gframe ", j, " / ", max_frames)
+    $.print("Δ time = ", delta_time, "s")
+    $.print("elapsed time: ", "{}:{}:{}".fmt(format_time(elapsed_time)))
+    $.print("ETA: ", "{}:{}:{}".fmt(format_time(eta)))
 }

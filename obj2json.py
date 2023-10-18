@@ -1,4 +1,3 @@
-import json
 import os
 
 # Create a directory path for your OBJ files
@@ -39,7 +38,7 @@ for obj_file in obj_files:
     if int_filename >= len(output):
         output += [0] * (int_filename - len(output) + 1)
     
-    output[int(filename)] = {"vertices": vertices, "faces": faces}
+    output[int(filename)] = [vertices, faces]
 
 print(mf, mv)
 
