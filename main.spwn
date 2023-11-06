@@ -1,13 +1,13 @@
-frametime = 1/30 // 30 fps
+frametime = 1/15 // 15 fps
 x_offset = 0 // when the video starts (at what x)
 y_offset = 2000
-canvas_offset = { x: 0, y: 0 }
+canvas_offset = [150, 300]
 canvas_scale = 10
-frames_amt = 6513
-max_vertices = 905
-max_faces = 334
+frames_amt = 10000
+max_vertices = 600
+max_faces = 296
 move_multiplier = 300 / 0.089588 // unit conversion from blender units to gd
-player_speed = 8.36820065875 // 0.5x
+player_speed = 19.18465924 // 4x
 
 // max values: x = 0.119476, y = 0.089588
 data = $.readfile("out.json", "json")
@@ -59,7 +59,7 @@ enable_gradient = (a, b, c, id) {
         GR_BL: vertices[a][2],
         GR_BR: vertices[b][2],
         GR_TL: vertices[c][2],
-        GR_TR: vertices[a][2],
+        GR_TR: vertices[c][2],
         GR_LAYER: 4,
         GR_ID: id,
     })
@@ -78,21 +78,21 @@ move_vertex = (v_idx, x, y) {
 
         $.add(obj{
             OBJ_ID: 211, // white block
-            SCALING: 0.025,
-            X: x * move_multiplier,
-            Y: -y * move_multiplier,
+            SCALING: 0.001,
+            X: x * move_multiplier + canvas_offset[0],
+            Y: -y * move_multiplier + canvas_offset[1],
             GROUPS: vertex[2],
         })
     }
 
-    to_move_x = $.round((x - vertex[0]) * move_multiplier * 100) / 100
-    to_move_y = $.round(-(y - vertex[1]) * move_multiplier * 100) / 100
+    to_move_x = $.round((x - vertex[0]) * move_multiplier * 10) / 10
+    to_move_y = $.round(-(y - vertex[1]) * move_multiplier * 10) / 10
 
     if to_move_x == 0 && to_move_y == 0 { return }
 
     $.add(obj{
         OBJ_ID: 901, // move trigger
-        X: curr_x-3, Y: curr_y,
+        X: curr_x, Y: curr_y,
         TARGET: vertex[2],
         MOVE_X: to_move_x,
         MOVE_Y: to_move_y,
@@ -129,9 +129,9 @@ hide_triangle = (triangle) {
 
 
 format_time = (time_sec: @number) {
-    seconds = @string($.round(time_sec % 60))
-    minutes = @string($.round(time_sec / 60) % 60)
-    hours = @string($.round(time_sec / 3600) % 24)
+    seconds = @string($.round(time_sec % 60)).replace("-", "")
+    minutes = @string($.round(time_sec / 60) % 60).replace("-", "")
+    hours = @string($.round(time_sec / 3600) % 24).replace("-", "")
 
     return ["0"*@number(hours.length==1) + hours, "0"*@number(minutes.length==1) + minutes, "0"*@number(seconds.length==1) + seconds]
 }
@@ -142,8 +142,8 @@ let last_face_amt = 0
 
 $.print("\n"*3)
 
-for j in 0..frames_amt {
-    data_len = data.length
+data_len = data.length
+for j in 0..$.min(frames_amt, data_len) {
     if j >= data_len { break }
     time = $.time()
 
@@ -167,9 +167,9 @@ for j in 0..frames_amt {
     max_frames = $.min(frames_amt, data_len) - 1
     delta_time = $.round(($.time() - time) * 1000) / 1000
     elapsed_time = $.round(($.time() - start_time) * 1000) / 1000
-    eta = delta_time * (max_frames - j) - elapsed_time
+    eta = delta_time * (max_frames - j)
 
-    $.print("\u{1b}[4A\u{1b}[Gframe ", j, " / ", max_frames)
+    $.print("\u{1b}[4A\u{1b}[G\u{1b}[0Jframe ", j, " / ", max_frames)
     $.print("Δ time = ", delta_time, "s")
     $.print("elapsed time: ", "{}:{}:{}".fmt(format_time(elapsed_time)))
     $.print("ETA: ", "{}:{}:{}".fmt(format_time(eta)))

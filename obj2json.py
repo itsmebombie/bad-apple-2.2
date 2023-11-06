@@ -7,8 +7,15 @@ obj_directory = 'obj_bad'
 obj_files = [f for f in os.listdir(obj_directory) if f.endswith('.obj')]
 mv = 0
 mf = 0
+
 output = []
+
+a = True
 for obj_file in obj_files:
+    # skip every other frame
+    a = not a
+    if a: continue
+
     vertices = []
     faces = []
     
