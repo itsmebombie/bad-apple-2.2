@@ -10,7 +10,7 @@ move_multiplier = 300 / 0.089588 // unit conversion from blender units to gd
 player_speed = 19.18465924 // 4x
 
 // max values: x = 0.119476, y = 0.089588
-data = $.readfile("out.json", "json")
+data = $.readfile("out.json", "json")[:4000]
 
 
 extract obj_props
@@ -85,19 +85,19 @@ move_vertex = (v_idx, x, y) {
         })
     }
 
-    to_move_x = $.round((x - vertex[0]) * move_multiplier * 10) / 10
-    to_move_y = $.round(-(y - vertex[1]) * move_multiplier * 10) / 10
+    to_move_x = $.round((x - vertex[0]) * move_multiplier * 50) / 50
+    to_move_y = $.round(-(y - vertex[1]) * move_multiplier * 50) / 50
 
     if to_move_x == 0 && to_move_y == 0 { return }
 
     $.add(obj{
         OBJ_ID: 901, // move trigger
-        X: curr_x, Y: curr_y,
+        X: curr_x-5, Y: curr_y,
         TARGET: vertex[2],
         MOVE_X: to_move_x,
         MOVE_Y: to_move_y,
         SCALING: 0.25,
-        DURATION: 0,
+        // DURATION: 0,
     })
 
     curr_y -= 5
@@ -109,8 +109,9 @@ move_vertex = (v_idx, x, y) {
 let frame = []
 let frame_vertices = []
 let frame_faces = []
+let frame_faces_len = 0
 draw_triangle = (triangle) {
-    if triangle >= frame_faces.length { return } // not sure why this would be the case
+    if triangle >= frame_faces_len { return } // not sure why this would be the case
 
     [a, b, c] = frame_faces[triangle]
     [ax, ay] = frame_vertices[a-1]
@@ -129,9 +130,9 @@ hide_triangle = (triangle) {
 
 
 format_time = (time_sec: @number) {
-    seconds = @string($.round(time_sec % 60)).replace("-", "")
-    minutes = @string($.round(time_sec / 60) % 60).replace("-", "")
-    hours = @string($.round(time_sec / 3600) % 24).replace("-", "")
+    seconds = @string($.floor(time_sec % 60)).replace("-", "")
+    minutes = @string($.floor(time_sec / 60) % 60).replace("-", "")
+    hours = @string($.floor(time_sec / 3600) % 24).replace("-", "")
 
     return ["0"*@number(hours.length==1) + hours, "0"*@number(minutes.length==1) + minutes, "0"*@number(seconds.length==1) + seconds]
 }
@@ -152,6 +153,7 @@ for j in 0..$.min(frames_amt, data_len) {
     if frame.type == @number { continue } // its empty
 
     frame_faces = frame[1]
+    frame_faces_len = frame_faces.length
     frame_vertices = frame[0]
 
     curr_x += frametime * player_speed * 30
@@ -159,9 +161,9 @@ for j in 0..$.min(frames_amt, data_len) {
 
 
     for i in 0..last_face_amt-1 { draw_triangle(i) }
-    for i in last_face_amt..frame_faces.length { hide_triangle(i) }
+    for i in last_face_amt..frame_faces_len { hide_triangle(i) }
     
-    last_face_amt = frame_faces.length
+    last_face_amt = frame_faces_len
 
 
     max_frames = $.min(frames_amt, data_len) - 1
