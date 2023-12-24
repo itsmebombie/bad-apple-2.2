@@ -4,13 +4,13 @@ y_offset = 2000
 canvas_offset = [150, 300]
 canvas_scale = 10
 frames_amt = 10000
-max_vertices = 600
-max_faces = 296
+max_faces = 500
+max_vertices = 700
 move_multiplier = 300 / 0.089588 // unit conversion from blender units to gd
 player_speed = 19.18465924 // 4x
 
 // max values: x = 0.119476, y = 0.089588
-data = $.readfile("out.json", "json")[:4000]
+data = $.readfile("out.json", "json")[:4500]
 
 
 extract obj_props
@@ -62,13 +62,13 @@ enable_gradient = (a, b, c, id) {
         GR_TR: vertices[c][2],
         GR_LAYER: 4,
         GR_ID: id,
+        GR_PREV_OPACITY: 0.75
     })
 
     curr_y -= 5
     faces[id][3] = true
 }
 
-let aa = 0
 move_vertex = (v_idx, x, y) {
     let vertex = vertices[v_idx]
 
@@ -78,10 +78,10 @@ move_vertex = (v_idx, x, y) {
 
         $.add(obj{
             OBJ_ID: 211, // white block
-            SCALING: 0.001,
             X: x * move_multiplier + canvas_offset[0],
             Y: -y * move_multiplier + canvas_offset[1],
             GROUPS: vertex[2],
+            HIDE_OBJECT: true,
         })
     }
 
@@ -97,7 +97,7 @@ move_vertex = (v_idx, x, y) {
         MOVE_X: to_move_x,
         MOVE_Y: to_move_y,
         SCALING: 0.25,
-        // DURATION: 0,
+        // DURATION: frametime,
     })
 
     curr_y -= 5
@@ -108,12 +108,16 @@ move_vertex = (v_idx, x, y) {
 
 let frame = []
 let frame_vertices = []
+let frame_vertices_len = 0
 let frame_faces = []
 let frame_faces_len = 0
 draw_triangle = (triangle) {
     if triangle >= frame_faces_len { return } // not sure why this would be the case
 
     [a, b, c] = frame_faces[triangle]
+
+    // if a >= frame_vertices_len || b >= frame_vertices_len || c >= frame_vertices_len { return }
+
     [ax, ay] = frame_vertices[a-1]
     [bx, by] = frame_vertices[b-1]
     [cx, cy] = frame_vertices[c-1]
@@ -124,8 +128,16 @@ draw_triangle = (triangle) {
     enable_gradient(a, b, c, triangle)
 }
 
-hide_triangle = (triangle) {
-    disable_gradient(triangle)
+hide_triangle = disable_gradient
+
+hide_all_trigs = () {
+    $.add(obj{
+        OBJ_ID: 2903, // gradient trigger
+        SCALING: 0.25,
+        X: curr_x-0.1, Y: curr_y,
+        GR_LAYER: 4,
+        GR_DISABLE_ALL: true,
+    })
 }
 
 
@@ -136,6 +148,17 @@ format_time = (time_sec: @number) {
 
     return ["0"*@number(hours.length==1) + hours, "0"*@number(minutes.length==1) + minutes, "0"*@number(seconds.length==1) + seconds]
 }
+
+
+// add center for camera
+// nvm idk how to center it
+// $.add(obj{
+//     OBJ_ID: 211,
+//     X: canvas_offset[0] + 30*canvas_scale/2,
+//     Y: canvas_offset[1] + 30*canvas_scale*0.75/2,
+//     SCALING: 0.01,
+//     GROUPS: 6969g,
+// })
 
 
 let start_time = $.time()
@@ -155,14 +178,15 @@ for j in 0..$.min(frames_amt, data_len) {
     frame_faces = frame[1]
     frame_faces_len = frame_faces.length
     frame_vertices = frame[0]
+    frame_vertices_len = frame_vertices.length
 
     curr_x += frametime * player_speed * 30
     curr_y = y_offset
 
-
+    hide_all_trigs()
     for i in 0..last_face_amt-1 { draw_triangle(i) }
-    for i in last_face_amt..frame_faces_len { hide_triangle(i) }
-    
+    // for i in last_face_amt..frame_faces_len { hide_triangle(i) }
+
     last_face_amt = frame_faces_len
 
 
